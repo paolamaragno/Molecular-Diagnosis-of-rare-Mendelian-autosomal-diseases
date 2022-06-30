@@ -1,0 +1,98 @@
+# the FASTQ files of the three individuals were mapped against the index of the reference genome using BOWTIE2 as aligner algorithm. 
+# The computation was performed using 8 pro- cessors from the server. The –rg argument was included in bowtie2 to subsequently specify 
+# the corresponding correct names of samples.
+
+bowtie2 -U /home/BCG2022_genomics_exam/case554_father.fq.gz -p 8 -x /home/BCG2022_genomics_exam/uni --rg-id 'SF' --rg "SM:father" | samtools view -Sb | samtools sort -o case554_father.bam
+bowtie2 -U /home/BCG2022_genomics_exam/case554_child.fq.gz -p 8 -x /home/BCG2022_genomics_exam/uni --rg-id 'SC' --rg "SM:child" | samtools view -Sb | samtools sort -o case554_child.bam
+bowtie2 -U /home/BCG2022_genomics_exam/case554_mother.fq.gz -p 8 -x /home/BCG2022_genomics_exam/uni --rg-id 'SM' --rg "SM:mother" | samtools view -Sb | samtools sort -o case554_mother.bam
+
+# The obtained SAM files were then converted into the cor- responding binary files, BAM, using the tool SAMTOOLS, and eventually sorted 
+# in ascending order of chromosome position and indexed to allow for the access of any coordinate
+
+samtools index case554_child.bam
+samtools index case554_mother.bam
+samtools index case554_father.bam
+
+# Coverage profiles were generated for each individual as BedGraph files that contain the information about how many mapped reads 
+# cover a certain position of the chro- mosome. 
+# These files can be used to visualize the coverage distribution using UCSC Genome Browser.
+
+bedtools genomecov -ibam case554_father.bam -bg -trackline -trackopts 'name="father"' -max 100 > fatherCov.bg
+bedtools genomecov -ibam case554_mother.bam -bg -trackline -trackopts 'name="mother"' -max 100 > motherCov.bg
+bedtools genomecov -ibam case554_child.bam -bg -trackline -trackopts 'name="child"' -max 100 > childCov.bg
+
+# A .vcf file was then generated using the freebayes function, containing all the variant alleles of the three individuals compared 
+# to the reference sequences of chromosomes 21 and 22. Several filters were set: -m to exclude alignments with a mapping quality <20; 
+# -C to require at least 5 counts of observations supporting an alternate allele within a single individual; -Q to count mismatches 
+# toward –read- mismatch-limit if the base quality of the mismatch is >= 10; —min-coverage to require at least a coverage equal to 10.
+
+freebayes -f /home/BCG2022_genomics_exam/universe.fasta -m 20 -C 5 -Q 10 --min-coverage 10 case554_mother.bam case554_child.bam case554_father.bam  > case554.vcf
+
+# Given the random order of the variables father, mother and child, assigned by freebayes while creating the .vcf file, the following 
+# command was run to check the structure of the header.
+
+grep "^#CHR" case554.vcf
+
+# Once the order of the individuals, in columns 10, 11 and 12, was obtained, a list of genotypes and corresponding frequencies was 
+# generated for each sample.
+
+grep -v '#' case554.vcf | cut -f 12 | cut -d ':' -f 1 | sort | uniq -c
+grep -v '#' case554.vcf | cut -f 11 | cut -d ':' -f 1 | sort | uniq -c
+grep -v '#' case554.vcf | cut -f 10 | cut -d ':' -f 1 | sort | uniq -c
+
+# The candidates.vcf file was created by adding the header of the original .vcf file. This is performed to save the possible 
+# disease-causing variants after filtering and also to eventually intersect the variant coordinates with the target regions of 
+# the exome sequencing.
+
+grep "#" case.vcf > candilist.vcf
+
+# This case was reported to be affected by an autosomal dominant disease.
+# For this reason, variants were firstly extracted using genotype combinations in which at least one parent is heterozygous for 
+# the disease-causing variant, however none of such vari- ants were associated to the phenotypes of interest. Consequently, only 
+# genotypes compatible with de novo mutations are reported. Genotypes compatible with disease causing variant 1:
+
+grep "0/0.*0/0.*0/1" case554.vcf >> candilist. vcf 
+grep "0/0.*0/2.*0/1" case554.vcf >> candilist. vcf 
+grep "0/0.*0/2.*1/2" case554.vcf >> candilist. vcf 
+grep "0/0.*2/2.*0/1" case554.vcf >> candilist. vcf 
+grep "0/2.*0/0.*0/1" case554.vcf >> candilist. vcf 
+grep "0/2.*0/0.*1/2" case554.vcf >> candilist. vcf 
+grep "0/2.*0/2.*0/1" case554.vcf >> candilist. vcf 
+grep "0/2.*0/2.*1/2" case554.vcf >> candilist. vcf 
+grep "0/2.*2/2.*1/2" case554.vcf >> candilist. vcf 
+grep "0/2.*2/2.*0/1" case554.vcf >> candilist. vcf 
+grep "2/2.*0/0.*0/1" case554.vcf >> candilist. vcf 
+grep "2/2.*0/0.*1/2" case554.vcf >> candilist. vcf 
+grep "2/2.*0/2.*1/2" case554.vcf >> candilist. vcf 
+grep "2/2.*0/2.*0/1" case554.vcf >> candilist. vcf 
+grep "2/2.*2/2.*1/2" case554.vcf >> candilist. vcf 
+
+# Genotypes compatible with disease causing variant 2:
+
+grep "0/0.*0/0.*0/2" case554.vcf  >> candi554.vcf 
+grep "0/0.*0/1.*0/2" case554.vcf  >> candi554.vcf 
+grep "0/0.*0/1.*1/2" case554.vcf  >> candi554.vcf 
+grep "0/0.*1/1.*0/2" case554.vcf  >> candi554.vcf 
+grep "0/0.*1/1.*1/2" case554.vcf  >> candi554.vcf 
+grep "0/1.*0/0.*0/2" case554.vcf  >> candi554.vcf 
+grep "0/1.*0/0.*1/2" case554.vcf  >> candi554.vcf 
+grep "0/1.*0/1.*0/2" case554.vcf  >> candi554.vcf 
+grep "0/1.*0/1.*1/2" case554.vcf  >> candi554.vcf 
+grep "0/1.*1/1.*0/2" case554.vcf  >> candi554.vcf 
+grep "0/1.*1/1.*1/2" case554.vcf  >> candi554.vcf 
+grep "0/1.*1/1.*0/2" case554.vcf  >> candi554.vcf  
+grep "0/1.*1/1.*1/2" case554.vcf  >> candi554.vcf 
+grep "1/1.*0/0.*0/2" case554.vcf  >> candi554.vcf
+grep "1/1.*0/0.*1/2" case554.vcf  >> candi554.vcf 
+grep "1/1.*0/1.*0/2" case554.vcf  >> candi554.vcf
+grep "1/1.*0/1.*1/2" case554.vcf  >> candi554.vcf
+grep "1/1.*1/1.*1/2" case554.vcf  >> candi554.vcf
+grep "1/3.*0/0.*0/2" case554.vcf  >> candi554.vcf
+grep "1/3.*0/0.*1/2" case554.vcf  >> candi554.vcf
+grep "1/3.*0/1.*0/2" case554.vcf  >> candi554.vcf
+grep "1/3.*0/1.*1/2" case554.vcf  >> candi554.vcf
+grep "1/3.*1/1.*1/2" case554.vcf  >> candi554.vcf
+
+# variant coordinates were intersected with targets of exome sequencing.
+
+bedtools intersect -a candilist554.vcf -b /home/BCG2022_genomics_exam/targetsPad100.bed -u > 554candilistTG.vcf
